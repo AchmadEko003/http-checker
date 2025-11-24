@@ -21,6 +21,7 @@ pub fn get_user_choice() -> String {
 }
 
 pub fn display_info() {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("\n╔════════════════════════════════════════╗");
     println!("║              INFORMATION               ║");
     println!("╠════════════════════════════════════════╣");
@@ -38,7 +39,7 @@ pub fn display_info() {
         .prompt();
 
     match ans {
-        Ok(_) => print!("\x1B[2J"),
+        Ok(_) => print!("{esc}[2J{esc}[1;1H", esc = 27 as char),
         Err(_) => println!("Failed to read input."),
     }
 }
