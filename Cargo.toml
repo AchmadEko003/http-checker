@@ -1,0 +1,8 @@
+[package]
+name = "http-check"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+inquire = "0.9.1"
+reqwest = { version = "0.12.24", features = ["blocking", "rustls-tls"] }
