@@ -2,7 +2,10 @@ mod welcome;
 
 use inquire::{Confirm, Select};
 use reqwest::blocking::Client;
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    time::Instant,
+};
 use welcome::{display_info, display_welcome};
 
 fn main() {
@@ -48,6 +51,8 @@ fn check_site() {
 
         println!("\n🔍 Checking {}...", url);
 
+        let time = Instant::now();
+
         match Client::new().get(url).send() {
             Ok(response) => {
                 let status = response.status();
@@ -71,6 +76,8 @@ fn check_site() {
                 } else {
                     println!("Result: ℹ️  Unknown Status");
                 }
+
+                println!("Response Time: {} ms", time.elapsed().as_millis());
                 println!("\n");
             }
             Err(e) => {
