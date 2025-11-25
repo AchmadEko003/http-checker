@@ -6,7 +6,7 @@ use std::{
     time::Instant,
 };
 
-use crate::check_lib::{check_value, check_version};
+use crate::check_lib::{check_value, check_version, check_web_server};
 
 pub fn check_site() {
     loop {
@@ -60,8 +60,13 @@ pub fn check_site() {
                 }
 
                 println!("Response Time: {} ms\n", time.elapsed().as_millis());
-                get_header_value(&response, "server", "Server");
-                get_header_value(&response, "x-powered-by", "X-Powered-By");
+
+                println!("======HEADER======");
+                get_header_value(&response, "Server");
+                get_header_value(&response, "X-Powered-By");
+                get_header_value(&response, "X-Content-Type-Options");
+                get_header_value(&response, "X-Frame-Options");
+                get_header_value(&response, "Strict-Transport-Security");
                 println!("\n");
             }
             Err(e) => {
@@ -85,28 +90,68 @@ pub fn check_site() {
     }
 }
 
-fn get_header_value(response: &Response, key: &str, title: &str) {
-    if let Some(header) = response.headers().get(key) {
+fn get_header_value(response: &Response, key: &str) {
+    if let Some(header) = response.headers().get(key.to_lowercase()) {
         let mut value = header.to_str().unwrap_or("N/A").to_owned();
 
-        if key == "server" || key == "x-powered-by" {
-            value = check_server_header(value.clone()).unwrap_or("".to_string());
+        match key.to_lowercase().as_str() {
+            "server" => value = check_server_header(value.as_str()).unwrap_or("".to_string()),
+            "x-powered-by" => value = check_server_header(value.as_str()).unwrap_or("".to_string()),
+            "x-content-type-options" => {
+                value = check_content_type_options(value.as_str()).unwrap_or("".to_string())
+            }
+            "x-frame-options" => {
+                value = check_frame_options(value.as_str()).unwrap_or("".to_string())
+            }
+            "strict-transport-security" => value = value.to_string() + " ✅",
+            _ => {
+                value = value.to_string();
+            }
         }
 
-        println!("{}: {}", title, value);
+        println!("{}: {}", key, value);
+    } else {
+        println!("{}: N/A ⚠️", key);
     }
 }
 
-fn check_server_header(header_value: String) -> Option<String> {
-    let mut value = header_value;
+fn check_server_header(header_value: &str) -> Option<String> {
+    let mut value = header_value.to_string();
 
-    if let Some(val) = check_value(&value) {
+    if let Some(val) = check_web_server(&value) {
         value = format!("{} {}", value, val);
     } else if let Some(version) = check_version(&value) {
         value = format!("{} {}", value, version);
     } else {
         return None;
     }
+
+    Some(value)
+}
+
+fn check_content_type_options(content_type: &str) -> Option<String> {
+    let mut value = content_type.to_string();
+
+    if value.to_lowercase() != "nosniff" {
+        let val = "⚠️";
+        value = format!("{} {}", value, val);
+    } else {
+        let val = "✅";
+        value = format!("{} {}", value, val);
+    }
+
+    Some(value)
+}
+
+fn check_frame_options(frame_options: &str) -> Option<String> {
+    let mut value = frame_options.to_string();
+
+    let val = match value.to_lowercase().as_str() {
+        "deny" | "sameorigin" => "✅",
+        _ => "⚠️",
+    };
+
+    value = format!("{} {}", value, val);
 
     Some(value)
 }
