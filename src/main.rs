@@ -1,5 +1,6 @@
 mod check_lib;
 mod checker;
+mod states;
 mod welcome;
 
 use inquire::Select;

@@ -6,7 +6,10 @@ use std::{
     time::Instant,
 };
 
-use crate::check_lib::{check_version, check_web_server};
+use crate::{
+    check_lib::{check_value, check_version, check_web_server},
+    states::ScanStatus,
+};
 
 pub fn check_site() {
     loop {
@@ -40,12 +43,27 @@ pub fn check_site() {
                 let status = response.status();
                 let status_code = status.as_u16();
 
+                let mut result = ScanStatus::default();
+                result.url = url_trimmed.clone();
+                result.status_code = status_code;
+                result.status_text = status.to_string();
+                result.response_time_ms = time.elapsed().as_millis();
+
+                result.server = get_header_value(&response, "Server");
+                result.x_powered_by = get_header_value(&response, "X-Powered-By");
+                result.x_content_type_options =
+                    get_header_value(&response, "X-Content-Type-Options");
+                result.x_frame_options = get_header_value(&response, "X-Frame-Options");
+                result.strict_transport_security =
+                    get_header_value(&response, "Strict-Transport-Security");
+                result.referrer_policy = get_header_value(&response, "Refferer-Policy");
+
                 println!("\n┌────────────────────────────────────────┐");
                 println!("│           CHECK RESULTS                │");
                 println!("└────────────────────────────────────────┘");
-                println!("URL: {}", url_trimmed);
-                println!("Status Code: {}", status_code);
-                println!("Status: {}", status);
+                println!("URL: {}", &result.url);
+                println!("Status Code: {}", &result.status_code);
+                println!("Status: {}", &result.status_text);
 
                 if status.is_success() {
                     println!("Result: ✅ Site is UP");
@@ -59,14 +77,14 @@ pub fn check_site() {
                     println!("Result: ℹ️  Unknown Status");
                 }
 
-                println!("Response Time: {} ms\n", time.elapsed().as_millis());
+                println!("Response Time: {} ms\n", &result.response_time_ms);
 
                 println!("======HEADER======\n");
-                get_header_value(&response, "Server");
-                get_header_value(&response, "X-Powered-By");
-                get_header_value(&response, "X-Content-Type-Options");
-                get_header_value(&response, "X-Frame-Options");
-                get_header_value(&response, "Strict-Transport-Security");
+                println!("{}", &result.server);
+                println!("{}", &result.x_powered_by);
+                println!("{}", &result.x_content_type_options);
+                println!("{}", &result.x_frame_options);
+                println!("{}", &result.strict_transport_security);
                 println!("\n");
             }
             Err(e) => {
@@ -90,13 +108,13 @@ pub fn check_site() {
     }
 }
 
-fn get_header_value(response: &Response, key: &str) {
+fn get_header_value(response: &Response, key: &str) -> String {
     if let Some(header) = response.headers().get(key.to_lowercase()) {
         let mut value = header.to_str().unwrap_or("N/A").to_owned();
 
         match key.to_lowercase().as_str() {
             "server" => value = check_server_header(value.as_str()).unwrap_or("".to_string()),
-            "x-powered-by" => value = check_server_header(value.as_str()).unwrap_or("".to_string()),
+            "x-powered-by" => value = check_powered_by(value.as_str()).unwrap_or("".to_string()),
             "x-content-type-options" => {
                 value = check_content_type_options(value.as_str()).unwrap_or("".to_string())
             }
@@ -109,9 +127,9 @@ fn get_header_value(response: &Response, key: &str) {
             }
         }
 
-        println!("{}: {}", key, value);
+        return format!("{}: {}", key, value);
     } else {
-        println!("{}: N/A ⚠️", key);
+        return format!("{}: N/A ⚠️", key);
     }
 }
 
@@ -119,6 +137,20 @@ fn check_server_header(header_value: &str) -> Option<String> {
     let mut value = header_value.to_string();
 
     if let Some(val) = check_web_server(&value) {
+        value = format!("{} {}", value, val);
+    } else if let Some(version) = check_version(&value) {
+        value = format!("{} {}", value, version);
+    } else {
+        return None;
+    }
+
+    Some(value)
+}
+
+fn check_powered_by(header_value: &str) -> Option<String> {
+    let mut value = header_value.to_string();
+
+    if let Some(val) = check_value(&value) {
         value = format!("{} {}", value, val);
     } else if let Some(version) = check_version(&value) {
         value = format!("{} {}", value, version);
