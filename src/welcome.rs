@@ -1,23 +1,9 @@
-use std::io::{self, Write};
-
 use inquire::Confirm;
 
 pub fn display_welcome() {
     println!("\n╔════════════════════════════════════════╗");
     println!("║     Welcome to HTTP Checker v0.1.0     ║");
     println!("╚════════════════════════════════════════╝\n");
-}
-
-pub fn get_user_choice() -> String {
-    print!("\nEnter your choice: ");
-    io::stdout().flush().expect("Failed to flush stdout");
-
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-
-    input.trim().to_string()
 }
 
 pub fn display_info() {

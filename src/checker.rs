@@ -6,6 +6,8 @@ use std::{
     time::Instant,
 };
 
+use crate::check_lib::{check_value, check_version};
+
 pub fn check_site() {
     loop {
         print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -17,23 +19,23 @@ pub fn check_site() {
             .read_line(&mut url)
             .expect("Failed to read line");
 
-        let url = url.trim();
+        let mut url_trimmed = url.trim().to_string();
         let regex = Regex::new(r"^(http|https)://").unwrap();
 
-        if url.is_empty() {
+        if url_trimmed.is_empty() {
             println!("❌ URL cannot be empty.\n");
             return;
         }
 
-        if regex.is_match(&url) {
-            url = format!("https://{}", &url.as_str);
+        if !regex.is_match(&url_trimmed) {
+            url_trimmed = String::from("https://") + &url_trimmed;
         }
 
-        println!("\n🔍 Checking {}...", url);
+        println!("\n🔍 Checking {}...", &url_trimmed);
 
         let time = Instant::now();
 
-        match Client::new().get(url).send() {
+        match Client::new().get(&url_trimmed).send() {
             Ok(response) => {
                 let status = response.status();
                 let status_code = status.as_u16();
@@ -41,15 +43,9 @@ pub fn check_site() {
                 println!("\n┌────────────────────────────────────────┐");
                 println!("│           CHECK RESULTS                │");
                 println!("└────────────────────────────────────────┘");
-                println!("URL: {}", url);
+                println!("URL: {}", url_trimmed);
                 println!("Status Code: {}", status_code);
                 println!("Status: {}", status);
-
-                let item: Vec<String> = response
-                    .headers()
-                    .iter()
-                    .map(|(item, _)| item.to_string())
-                    .collect();
 
                 if status.is_success() {
                     println!("Result: ✅ Site is UP");
@@ -63,7 +59,9 @@ pub fn check_site() {
                     println!("Result: ℹ️  Unknown Status");
                 }
 
-                println!("Response Time: {} ms", time.elapsed().as_millis());
+                println!("Response Time: {} ms\n", time.elapsed().as_millis());
+                get_header_value(&response, "server", "Server");
+                get_header_value(&response, "x-powered-by", "X-Powered-By");
                 println!("\n");
             }
             Err(e) => {
@@ -87,8 +85,28 @@ pub fn check_site() {
     }
 }
 
-fn get_header_value(response: &Response, key: &str) -> Option<String> {
-    let header = response.headers().get(key)?;
+fn get_header_value(response: &Response, key: &str, title: &str) {
+    if let Some(header) = response.headers().get(key) {
+        let mut value = header.to_str().unwrap_or("N/A").to_owned();
 
-    Some(header.to_str().ok()?.to_string())
+        if key == "server" || key == "x-powered-by" {
+            value = check_server_header(value.clone()).unwrap_or("".to_string());
+        }
+
+        println!("{}: {}", title, value);
+    }
+}
+
+fn check_server_header(header_value: String) -> Option<String> {
+    let mut value = header_value;
+
+    if let Some(val) = check_value(&value) {
+        value = format!("{} {}", value, val);
+    } else if let Some(version) = check_version(&value) {
+        value = format!("{} {}", value, version);
+    } else {
+        return None;
+    }
+
+    Some(value)
 }

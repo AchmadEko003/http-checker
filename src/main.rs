@@ -1,3 +1,4 @@
+mod check_lib;
 mod checker;
 mod welcome;
 
