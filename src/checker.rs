@@ -6,7 +6,7 @@ use std::{
     time::Instant,
 };
 
-use crate::check_lib::{check_value, check_version, check_web_server};
+use crate::check_lib::{check_version, check_web_server};
 
 pub fn check_site() {
     loop {
@@ -61,7 +61,7 @@ pub fn check_site() {
 
                 println!("Response Time: {} ms\n", time.elapsed().as_millis());
 
-                println!("======HEADER======");
+                println!("======HEADER======\n");
                 get_header_value(&response, "Server");
                 get_header_value(&response, "X-Powered-By");
                 get_header_value(&response, "X-Content-Type-Options");
