@@ -1,12 +1,12 @@
-mod check_lib;
-mod checker;
+mod modules;
 mod states;
+mod utils;
 mod welcome;
 
 use inquire::Select;
 use welcome::{display_info, display_welcome};
 
-use crate::checker::check_site;
+use crate::modules::check_site;
 
 fn main() {
     let options = vec!["Check Site", "Info", "Quit"];
